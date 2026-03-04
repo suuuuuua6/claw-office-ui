@@ -165,6 +165,18 @@ python3 scripts/security_check.py
   - `FLASK_SECRET_KEY`（>=24 位随机字符串）
   - `ASSET_DRAWER_PASS`（不要使用 `1234`）
 
+## 3.2、真实状态自动采集（避免手动切状态）
+
+默认推荐使用 `office-agent-push.py` 持续推送本地 `state.json`，无需每次手动改地图状态。
+
+- 优先读取：`/root/.openclaw/workspace/Star-Office-UI/state.json`
+- 若本地状态长期未更新，会自动回 idle（避免“假工作中”）
+- 可用环境变量调节过期阈值（秒）：
+
+```bash
+export OFFICE_STALE_STATE_TTL=600
+```
+
 ---
 
 ## 4、常用 API
