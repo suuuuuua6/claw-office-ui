@@ -14,9 +14,6 @@ COPY frontend/ ./static/
 
 # 复制配置文件
 COPY agents-config.json .
-COPY agents-state.json .
-COPY state.json .
-COPY join-keys.json .
 
 # 创建必要的目录
 RUN mkdir -p assets assets/bg-history assets/home-favorites
