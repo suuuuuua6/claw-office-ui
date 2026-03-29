@@ -7,14 +7,13 @@ services:
     volumes:
       # 配置文件（可编辑）
       - ./agents-config.json:/app/agents-config.json
-      - ./agents-state.json:/app/agents-state.json
     environment:
       - STAR_BACKEND_PORT=19000
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-star-office-dev-secret-change-in-prod}
       - ASSET_DRAWER_PASS=${ASSET_DRAWER_PASS:-1234}
     restart: unless-stopped
     networks:
-      - claw-office-net
+      - yiagent-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
       interval: 30s
@@ -23,6 +22,5 @@ services:
       start_period: 10s
 
 networks:
-  claw-office-net:
-    name: claw-office-net
+  yiagent-net:
     external: true
