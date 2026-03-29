@@ -3,6 +3,7 @@
 
 from flask import Flask, jsonify, send_from_directory, make_response, request, session
 from datetime import datetime, timedelta
+from typing import Optional
 import json
 import os
 import random
@@ -24,9 +25,13 @@ from store_utils import (
     save_asset_defaults as _store_save_asset_defaults,
     load_runtime_config as _store_load_runtime_config,
     save_runtime_config as _store_save_runtime_config,
+    load_agents_config as _store_load_agents_config,
+    save_agents_config as _store_save_agents_config,
+    find_agent_by_id as _store_find_agent_by_id,
     load_join_keys as _store_load_join_keys,
     save_join_keys as _store_save_join_keys,
 )
+from auth_utils import generate_signature, verify_signature, verify_timestamp, verify_secret_key_hash
 
 try:
     from PIL import Image
@@ -67,6 +72,17 @@ AUTO_ROTATE_MIN_INTERVAL_SECONDS = int(os.getenv("AUTO_ROTATE_MIN_INTERVAL_SECON
 _last_home_rotate_at = 0
 ASSET_DEFAULTS_FILE = os.path.join(ROOT_DIR, "asset-defaults.json")
 RUNTIME_CONFIG_FILE = os.path.join(ROOT_DIR, "runtime-config.json")
+AGENTS_CONFIG_FILE = os.path.join(ROOT_DIR, "agents-config.json")
+
+# Agents config hot reload cache
+_agents_config_cache = None
+_agents_config_last_mtime = 0
+AGENTS_CONFIG_FILE = os.path.join(ROOT_DIR, "agents-config.json")
+
+# Agents config hot reload
+_agents_config_cache = None
+_agents_config_last_mtime = 0
+AGENTS_CONFIG_FILE = os.path.join(ROOT_DIR, "agents-config.json")
 
 # Canonical agent states: single source of truth for validation and mapping
 VALID_AGENT_STATES = frozenset({"idle", "writing", "researching", "executing", "syncing", "error"})
@@ -352,6 +368,29 @@ def load_runtime_config():
 
 def save_runtime_config(data):
     _store_save_runtime_config(RUNTIME_CONFIG_FILE, data)
+
+
+def load_agents_config():
+    """Load agents config with hot reload support."""
+    global _agents_config_cache, _agents_config_last_mtime
+    try:
+        mtime = os.path.getmtime(AGENTS_CONFIG_FILE)
+        if _agents_config_cache is None or mtime > _agents_config_last_mtime:
+            with open(AGENTS_CONFIG_FILE, "r", encoding="utf-8") as f:
+                _agents_config_cache = json.load(f)
+            _agents_config_last_mtime = mtime
+    except Exception:
+        pass
+    return _agents_config_cache or {"agents": [], "settings": {}}
+
+
+def find_agent_config(agent_id: str) -> Optional[dict]:
+    """Find agent config by agentId."""
+    config = load_agents_config()
+    for agent in config.get("agents", []):
+        if agent.get("agentId") == agent_id:
+            return agent
+    return None
 
 
 def _ensure_home_favorites_index():
@@ -837,55 +876,101 @@ if os.path.exists(RUNTIME_CONFIG_FILE):
 
 @app.route("/agents", methods=["GET"])
 def get_agents():
-    """Get full agents list (for multi-agent UI), with auto-cleanup on access"""
-    agents = load_agents_state()
-    now = datetime.now()
+    """Get all agents status with auto-offline detection.
 
-    cleaned_agents = []
-    keys_data = load_join_keys()
+    Query params:
+    - roomId: filter agents by room (optional)
+    """
+    agents = load_agents_state()
+    config = load_agents_config()
+    now = datetime.now()
+    room_id = request.args.get("roomId", "").strip()
+
+    # Get timeout from config
+    offline_timeout = 300
+    try:
+        settings = config.get("settings", {})
+        offline_timeout = int(settings.get("offlineTimeout", 300))
+    except Exception:
+        pass
 
     for a in agents:
-        if a.get("isMain"):
-            cleaned_agents.append(a)
-            continue
-
-        auth_expires_at_str = a.get("authExpiresAt")
-        auth_status = a.get("authStatus", "pending")
-
-        # 1) 超时未批准自动 leave
-        if auth_status == "pending" and auth_expires_at_str:
+        # Auto-offline detection: if no heartbeat for offline_timeout seconds
+        last_heartbeat = a.get("lastHeartbeatAt") or a.get("lastPushAt") or a.get("updated_at")
+        if last_heartbeat:
             try:
-                auth_expires_at = datetime.fromisoformat(auth_expires_at_str)
-                if now > auth_expires_at:
-                    key = a.get("joinKey")
-                    if key:
-                        key_item = next((k for k in keys_data.get("keys", []) if k.get("key") == key), None)
-                        if key_item:
-                            key_item["used"] = False
-                            key_item["usedBy"] = None
-                            key_item["usedByAgentId"] = None
-                            key_item["usedAt"] = None
-                    continue
-            except Exception:
-                pass
-
-        # 2) 超时未推送自动离线（超过5分钟）
-        last_push_at_str = a.get("lastPushAt")
-        if auth_status == "approved" and last_push_at_str:
-            try:
-                last_push_at = datetime.fromisoformat(last_push_at_str)
-                age = (now - last_push_at).total_seconds()
-                if age > 300:  # 5分钟无推送自动离线
+                dt = datetime.fromisoformat(last_heartbeat.replace("Z", "+00:00"))
+                age = (now - dt).total_seconds()
+                if age > offline_timeout:
                     a["authStatus"] = "offline"
+                else:
+                    a["authStatus"] = "approved"
             except Exception:
                 pass
 
-        cleaned_agents.append(a)
+    save_agents_state(agents)
 
-    save_agents_state(cleaned_agents)
-    save_join_keys(keys_data)
+    # Filter by room if specified
+    if room_id:
+        # Get agents that belong to this room
+        config_agents = config.get("agents", [])
+        room_agent_ids = set()
+        for ac in config_agents:
+            if ac.get("roomId") == room_id or (ac.get("roomId") is None and ac.get("agentId") == room_id):
+                room_agent_ids.add(ac.get("agentId"))
+        # Also include agents that explicitly set roomId in state
+        filtered = [a for a in agents if a.get("roomId") == room_id or a.get("agentId") in room_agent_ids or a.get("agentId") == room_id]
+        return jsonify(filtered)
 
-    return jsonify(cleaned_agents)
+    return jsonify(agents)
+
+
+@app.route("/rooms", methods=["GET"])
+def get_rooms():
+    """Get all rooms with their current occupants."""
+    config = load_agents_config()
+    agents = load_agents_state()
+
+    # Build rooms from config
+    rooms = {}
+
+    # Add explicit rooms from config
+    for room_id, room_info in (config.get("rooms") or {}).items():
+        rooms[room_id] = {
+            "roomId": room_id,
+            "name": room_info.get("name", f"{room_id}的办公室"),
+            "ownerId": room_info.get("ownerId"),
+            "agents": []
+        }
+
+    # Auto-create rooms for each agent (if no explicit room)
+    for ac in config.get("agents", []):
+        agent_id = ac.get("agentId")
+        rid = ac.get("roomId") or agent_id  # Default: agent's own room
+        if rid not in rooms:
+            rooms[rid] = {
+                "roomId": rid,
+                "name": f"{ac.get('name', agent_id)}的办公室",
+                "ownerId": agent_id,
+                "agents": []
+            }
+
+    # Populate agents into rooms
+    for a in agents:
+        agent_id = a.get("agentId")
+        # Find which room this agent belongs to
+        ac = next((x for x in config.get("agents", []) if x.get("agentId") == agent_id), None)
+        rid = (ac and ac.get("roomId")) or a.get("roomId") or agent_id
+
+        if rid in rooms:
+            rooms[rid]["agents"].append({
+                "agentId": agent_id,
+                "name": a.get("name", agent_id),
+                "state": a.get("state", "idle"),
+                "authStatus": a.get("authStatus", "approved")
+            })
+
+    return jsonify(list(rooms.values()))
 
 
 @app.route("/agent-approve", methods=["POST"])
@@ -1229,6 +1314,115 @@ def agent_push():
         return jsonify({"ok": True, "agentId": agent_id, "area": target.get("area")})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/agent-heartbeat", methods=["POST"])
+def agent_heartbeat():
+    """Agent heartbeat with HMAC signature authentication.
+
+    Headers:
+        X-Agent-Id: Agent identifier
+        X-Timestamp: ISO format timestamp (e.g., 2026-03-29T12:00:00Z)
+        X-Signature: HMAC-SHA256 signature (format: hmac-sha256=xxx)
+
+    Body:
+        {"state": "writing", "detail": "working on docs", "progress": 50}
+    """
+    from auth_utils import verify_signature, verify_timestamp, verify_secret_key_hash
+
+    # 1. Extract headers
+    agent_id = (request.headers.get("X-Agent-Id") or "").strip()
+    timestamp = (request.headers.get("X-Timestamp") or "").strip()
+    signature = (request.headers.get("X-Signature") or "").strip()
+
+    # 2. Validate required headers
+    if not agent_id:
+        return jsonify({"ok": False, "code": "MISSING_AGENT_ID", "msg": "Missing X-Agent-Id header"}), 400
+    if not timestamp:
+        return jsonify({"ok": False, "code": "MISSING_TIMESTAMP", "msg": "Missing X-Timestamp header"}), 400
+    if not signature:
+        return jsonify({"ok": False, "code": "MISSING_SIGNATURE", "msg": "Missing X-Signature header"}), 400
+
+    # 3. Verify timestamp (prevent replay attacks)
+    ts_valid, ts_error = verify_timestamp(timestamp)
+    if not ts_valid:
+        return jsonify({"ok": False, "code": "INVALID_TIMESTAMP", "msg": ts_error}), 400
+
+    # 4. Find agent config
+    agent_config = find_agent_config(agent_id)
+    if not agent_config:
+        return jsonify({"ok": False, "code": "AGENT_NOT_FOUND", "msg": f"Agent '{agent_id}' not registered"}), 404
+    if not agent_config.get("enabled", True):
+        return jsonify({"ok": False, "code": "AGENT_DISABLED", "msg": "Agent is disabled"}), 403
+
+    # 5. Verify signature
+    body = request.get_data(as_text=True)
+    secret_key_hash = agent_config.get("secretKeyHash", "")
+    # For backward compatibility, also support secretKey field (not recommended)
+    secret_key_plain = agent_config.get("secretKey", "")
+
+    if secret_key_hash:
+        # Need to verify against hash - client sends plain secret in signature
+        # We need the plain secret to verify, so this approach requires storing plain secrets
+        # For security, we should only store hashes and require clients to know the secret
+        # For now, support both approaches
+        if secret_key_plain:
+            if not verify_signature(secret_key_plain, timestamp, body, signature):
+                return jsonify({"ok": False, "code": "INVALID_SIGNATURE", "msg": "Signature verification failed"}), 401
+        else:
+            # Cannot verify hash without plain secret - this is a config error
+            return jsonify({"ok": False, "code": "CONFIG_ERROR", "msg": "Server config missing secretKey"}), 500
+    elif secret_key_plain:
+        # Legacy: plain secret stored directly
+        if not verify_signature(secret_key_plain, timestamp, body, signature):
+            return jsonify({"ok": False, "code": "INVALID_SIGNATURE", "msg": "Signature verification failed"}), 401
+    else:
+        return jsonify({"ok": False, "code": "CONFIG_ERROR", "msg": "Server config missing secret"}), 500
+
+    # 6. Process heartbeat
+    data = request.get_json(silent=True) or {}
+    state = normalize_agent_state(data.get("state", "idle"))
+    detail = data.get("detail", "")
+    progress = data.get("progress", 0)
+    room_id = data.get("roomId") or agent_config.get("roomId") or agent_id  # Default to agent's own room
+
+    # Update agent state
+    agents = load_agents_state()
+    existing = next((a for a in agents if a.get("agentId") == agent_id), None)
+
+    now = datetime.now()
+    if existing:
+        existing["state"] = state
+        existing["detail"] = detail
+        existing["progress"] = progress
+        existing["area"] = state_to_area(state)
+        existing["roomId"] = room_id
+        existing["updated_at"] = now.isoformat()
+        existing["lastHeartbeatAt"] = now.isoformat()
+        existing["authStatus"] = "approved"  # Heartbeat success = online
+    else:
+        agents.append({
+            "agentId": agent_id,
+            "name": agent_config.get("name", agent_id),
+            "state": state,
+            "detail": detail,
+            "progress": progress,
+            "area": state_to_area(state),
+            "roomId": room_id,
+            "avatar": agent_config.get("avatar", "star"),
+            "updated_at": now.isoformat(),
+            "lastHeartbeatAt": now.isoformat(),
+            "authStatus": "approved"
+        })
+
+    save_agents_state(agents)
+
+    return jsonify({
+        "ok": True,
+        "agentId": agent_id,
+        "area": state_to_area(state),
+        "serverTime": now.isoformat()
+    })
 
 
 @app.route("/health", methods=["GET"])

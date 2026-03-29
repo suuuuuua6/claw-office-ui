@@ -599,11 +599,6 @@
             pointer-events: auto;
             border-radius: 10px;
         }
-        #lang-toggle-group,
-        #lang-toggle-group button {
-            position: relative;
-            z-index: 1000002 !important;
-        }
         .room-loading-inner {
             display: flex;
             flex-direction: column;
@@ -1128,17 +1123,94 @@
                 min-height: 36px;
             }
         }
+        /* 房间列表面板（左侧） */
+        #room-panel {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 100px);
+            left: 12px;
+            width: 140px;
+            max-height: calc(100vh - 140px);
+            background: #141722;
+            border: 4px solid #0e1119;
+            z-index: 1000001;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #room-panel-title {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px 6px;
+            border-bottom: 2px solid #0e1119;
+            background: #0b1220;
+        }
+        #room-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px;
+        }
+        #room-list::-webkit-scrollbar { width: 4px; }
+        #room-list::-webkit-scrollbar-track { background: #1a1a2e; }
+        #room-list::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+        .room-item {
+            display: flex;
+            flex-direction: column;
+            padding: 8px 6px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #2a2f3f;
+            border: 1px solid #444;
+            transition: all 0.2s;
+        }
+        .room-item:hover {
+            background: #3a3f4f;
+            border-color: #ffd700;
+        }
+        .room-item.active {
+            background: #4a5568;
+            border-color: #ffd700;
+        }
+        .room-item-name {
+            color: #fff;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .room-item-count {
+            color: #888;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+        .room-item-count.open {
+            color: #22c55e;
+        }
+        .room-item-count.closed {
+            color: #64748b;
+        }
+        }
     </style>
 </head>
 <body>
     <!-- 加载遮罩 -->
     <div id="loading-overlay">
-        <div id="loading-text">Loading Star’s pixel office...</div>
+        <div id="loading-text">Loading Star's pixel office...</div>
         <div id="loading-progress-container">
             <div id="loading-progress-bar"></div>
         </div>
     </div>
-    
+
+    <!-- 房间列表面板（左侧） -->
+    <div id="room-panel">
+        <div id="room-panel-title">房 间</div>
+        <div id="room-list">
+            <div style="color:#9ca3af;font-size:11px;text-align:center;padding:10px 0;">加载中...</div>
+        </div>
+    </div>
+
     <div id="main-stage">
         <div id="game-container">
             <div id="game-skeleton"><div class="hint">正在进入像素办公室…</div></div>
@@ -1281,104 +1353,107 @@
     <button id="pan-toggle" style="position:fixed; top:calc(env(safe-area-inset-top, 0px) + 12px); left:12px; z-index:999999; padding:8px 10px; font-family:ArkPixel,monospace; font-size:13px; cursor:pointer; border:2px solid #333; border-radius:5px; background:#333; color:#fff;">
         移动视野
     </button>
-    <div id="lang-toggle-group" style="position:fixed; top:calc(env(safe-area-inset-top, 0px) + 52px); left:12px; z-index:1000002; display:flex; gap:2px; align-items:center;">
-        <button id="lang-btn-en" onclick="setUILanguage('en')" style="padding:8px 10px; font-family:ArkPixel,monospace; font-size:13px; cursor:pointer; border:2px solid #333; border-radius:5px; background:#333; color:#fff;">EN</button>
-        <button id="lang-btn-jp" onclick="setUILanguage('ja')" style="padding:8px 10px; font-family:ArkPixel,monospace; font-size:13px; cursor:pointer; border:2px solid #333; border-radius:5px; background:#333; color:#fff;">JP</button>
-        <button id="lang-btn-cn" onclick="setUILanguage('zh')" style="padding:8px 10px; font-family:ArkPixel,monospace; font-size:13px; cursor:pointer; border:2px solid #333; border-radius:5px; background:#333; color:#fff;">CN</button>
-    </div>
 
     <script src="/static/vendor/phaser-3.80.1.min.js?v={{VERSION_TIMESTAMP}}"></script>
     <script>
-        // 简易中英文切换
-        let uiLang = localStorage.getItem('uiLang') || 'en';
+        // 仅中文界面
+        const uiLang = 'zh';
         const I18N = {
-            zh: {
-                controlTitle: 'Star 状态',
-                btnIdle: '待命', btnWork: '工作', btnSync: '同步', btnError: '报警', btnDecor: '装修房间',
-                drawerTitle: '装修房间 · 资产侧边栏', drawerClose: '关闭',
-                authTitle: '请输入装修验证码', authPlaceholder: '输入验证码', authVerify: '验证', authDefaultPassHint: '默认密码：1234（可随时让我帮你改，建议改成强密码）',
-                drawerVisibilityTip: '可见性：点击条目右侧眼睛按钮切换该资产显示',
-                hideDrawer: '👁 隐藏侧边栏', showDrawer: '👁 显示侧边栏',
-                assetHide: '隐藏', assetShow: '显示',
-                resetToDefault: '重置为默认资产', restorePrevAsset: '用上一版',
-                btnMove: '📦 搬新家', btnHome: '🐚 回老家', btnHomeLast: '↩️ 回上一个家', btnHomeFavorite: '⭐ 收藏这个家', btnBroker: '🤝 找中介', btnDIY: '🪚 自己装', btnBrokerGo: '听中介的',
-                homeFavTitle: '🏠 收藏的家', homeFavEmpty: '还没有收藏，先点“⭐ 收藏这个家”', homeFavApply: '替换到当前地图', homeFavDelete: '删除', homeFavSaved: '✅ 已收藏当前地图', homeFavApplied: '✅ 已替换为收藏地图', homeFavDeleted: '🗑️ 已删除收藏',
-                brokerHint: '你会给龙虾推荐什么样的房子',
-                brokerPromptPh: '例如：故宫主题、莫奈风格、地牢主题、兵马俑主题……',
-                brokerNeedPrompt: '请先输入中介方案描述',
-                brokerGenerating: '🏘️ 正在按中介方案生成底图，请稍候（约20-90秒）...',
-                brokerDone: '✅ 已按中介方案生成并替换底图，正在刷新房间...',
-                moveSuccess: '✅ 搬家成功！',
-                brokerMissingKey: '❌ 生图失败：缺少 GEMINI API Key，请在下方填写并保存后重试',
-                geminiPanelTitle: '🔐 API 设置（可折叠）', geminiHint: '可选：填写你的生图 API Key（留空不影响基础功能）', geminiApiDoc: '📘 如何申请 Google API Key', geminiInputPh: '粘贴 GEMINI_API_KEY（不会回显）', geminiSaveKey: '保存 Key', geminiMaskNoKey: '当前状态：未配置 Key', geminiMaskHasKey: '当前已配置：',
-                speedModeLabel: '生成模式', speedFast: '🍌2', speedQuality: '🍌Pro',
-                searchPlaceholder: '搜索资产名（如 desk / sofa / star）', loaded: '已加载', allAssets: '全部资产',
-                chooseImage: '上传素材', confirmUpload: '确认刷新', resetToDefault: '重置默认', restorePrevAsset: '恢复上版', uploadPending: '待上传', uploadTarget: '目标',
-                assetHintNotInScene: '当前场景未检测到此对象，仍可替换文件（刷新后生效）',
-                assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
-                showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
-                memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
-                loadingOffice: '正在加载 Star 的像素办公室...'
-            },
-            en: {
-                controlTitle: 'Star Status',
-                btnIdle: 'Idle', btnWork: 'Work', btnSync: 'Sync', btnError: 'Alert', btnDecor: 'Decorate Room',
-                drawerTitle: 'Decorate Room · Asset Sidebar', drawerClose: 'Close',
-                authTitle: 'Enter Decor Passcode', authPlaceholder: 'Enter passcode', authVerify: 'Verify', authDefaultPassHint: 'Default passcode: 1234 (ask me anytime to change it; stronger passcode recommended)',
-                drawerVisibilityTip: 'Visibility: use the eye button on each row to hide/show that asset',
-                hideDrawer: '👁 Hide Drawer', showDrawer: '👁 Show Drawer',
-                assetHide: 'Hide', assetShow: 'Show',
-                resetToDefault: 'Reset to Default', restorePrevAsset: 'Use Previous',
-                btnMove: '📦 New Home', btnHome: '🐚 Go Home', btnHomeLast: '↩️ Last One', btnHomeFavorite: '⭐ Save This Home', btnBroker: '🤝 Broker', btnDIY: '🪚 DIY', btnBrokerGo: 'Follow Broker',
-                homeFavTitle: '🏠 Saved Homes', homeFavEmpty: 'No saved homes yet. Tap “⭐ Save This Home” first.', homeFavApply: 'Apply to Current Map', homeFavDelete: 'Delete', homeFavSaved: '✅ Current map saved', homeFavApplied: '✅ Applied saved home', homeFavDeleted: '🗑️ Saved home deleted',
-                brokerHint: 'What kind of house would you recommend for Lobster?',
-                brokerPromptPh: 'e.g. Forbidden City theme, Monet style, dungeon theme, Terracotta Warriors theme...',
-                brokerNeedPrompt: 'Please enter broker style prompt first',
-                brokerGenerating: '🏘️ Generating room background from broker plan, please wait (20-90s)...',
-                brokerDone: '✅ Broker plan applied and background replaced, refreshing room...',
-                moveSuccess: '✅ Move successful!',
-                brokerMissingKey: '❌ Generation failed: missing GEMINI API key. Fill it below and retry.',
-                geminiPanelTitle: '🔐 API Settings (collapsible)', geminiHint: 'Optional: set your image API key (base features work without it)', geminiApiDoc: '📘 How to get a Google API Key', geminiInputPh: 'Paste GEMINI_API_KEY (input hidden)', geminiSaveKey: 'Save Key', geminiMaskNoKey: 'Current: no key configured', geminiMaskHasKey: 'Configured key:',
-                speedModeLabel: 'Render Mode', speedFast: '🍌2', speedQuality: '🍌Pro',
-                searchPlaceholder: 'Search assets (desk / sofa / star)', loaded: 'Loaded', allAssets: 'All Assets',
-                chooseImage: 'Upload Asset', confirmUpload: 'Apply Refresh', resetToDefault: 'Reset Default', restorePrevAsset: 'Restore Prev', uploadPending: 'Pending Upload', uploadTarget: 'Target',
-                assetHintNotInScene: 'This object is not detected in current scene; you can still replace file (effective after refresh)',
-                assetHintDefault: 'Generic asset: keep source size, alpha channel, and visual anchor to avoid drift/distortion',
-                showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
-                memoTitle: 'YESTERDAY NOTES', guestTitle: 'VISITOR LIST', officeTitle: 'Haixin Lobster Office',
-                loadingOffice: 'Loading Star’s pixel office...'
-            },
-            ja: {
-                controlTitle: 'Star ステータス',
-                btnIdle: '待機', btnWork: '作業', btnSync: '同期', btnError: '警報', btnDecor: '部屋を編集',
-                drawerTitle: '部屋編集・アセットサイドバー', drawerClose: '閉じる',
-                authTitle: '編集パスコードを入力', authPlaceholder: 'パスコード入力', authVerify: '認証', authDefaultPassHint: '初期パスコード：1234（いつでも変更を相談可。強固なパス推奨）',
-                drawerVisibilityTip: '表示切替：各行右側の目ボタンで資産を表示/非表示',
-                hideDrawer: '👁 サイドバーを隠す', showDrawer: '👁 サイドバーを表示',
-                assetHide: '非表示', assetShow: '表示',
-                resetToDefault: 'デフォルトへ戻す', restorePrevAsset: '前の版へ戻す',
-                btnMove: '📦 引っ越し', btnHome: '🐚 実家に戻る', btnHomeLast: '↩️ ひとつ前へ', btnHomeFavorite: '⭐ この家を保存', btnBroker: '🤝 仲介', btnDIY: '🪚 自分で装飾', btnBrokerGo: '仲介に任せる',
-                homeFavTitle: '🏠 保存した家', homeFavEmpty: 'まだ保存がありません。先に「⭐ この家を保存」を押してください。', homeFavApply: '現在のマップに適用', homeFavDelete: '削除', homeFavSaved: '✅ 現在のマップを保存しました', homeFavApplied: '✅ 保存した家を適用しました', homeFavDeleted: '🗑️ 保存した家を削除しました',
-                brokerHint: 'ロブスターにはどんな家をおすすめしますか',
-                brokerPromptPh: '例：故宮テーマ、モネ風、ダンジョン風、兵馬俑テーマ…',
-                brokerNeedPrompt: '先に仲介プランの説明を入力してください',
-                brokerGenerating: '🏘️ 仲介プランで背景を生成中（20〜90秒）...',
-                brokerDone: '✅ 仲介プランを適用して背景を更新しました。部屋を更新中...',
-                moveSuccess: '✅ 引っ越し成功！',
-                brokerMissingKey: '❌ 生成失敗：GEMINI APIキーが未設定です。下で入力して保存してください。',
-                geminiPanelTitle: '🔐 API設定（折りたたみ）', geminiHint: '任意：画像生成APIキーを設定（未設定でも基本機能は利用可）', geminiApiDoc: '📘 Google API Keyの取得方法', geminiInputPh: 'GEMINI_API_KEY を貼り付け（入力は非表示）', geminiSaveKey: 'Keyを保存', geminiMaskNoKey: '現在：キー未設定', geminiMaskHasKey: '設定済みキー：',
-                speedModeLabel: '生成モード', speedFast: '🍌2', speedQuality: '🍌Pro',
-                searchPlaceholder: 'アセット検索（desk / sofa / star）', loaded: '読み込み済み', allAssets: '全アセット',
-                chooseImage: '素材アップロード', confirmUpload: '確定して更新', resetToDefault: '初期に戻す', restorePrevAsset: '前版に戻す', uploadPending: 'アップロード待ち', uploadTarget: '対象',
-                assetHintNotInScene: '現在のシーンでこのオブジェクトは未検出です。ファイル差し替えは可能（更新後に反映）',
-                assetHintDefault: '汎用素材：元サイズ・透過・視覚アンカーを維持し、ズレや崩れを防いでください',
-                showCoords: '座標表示', hideCoords: '座標非表示', moveView: '視点移動', lockView: '視点固定',
-                memoTitle: '昨日のメモ', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
-                loadingOffice: 'Star のピクセルオフィスを読み込み中...'
-            }
+            controlTitle: 'Star 状态',
+            btnIdle: '待命', btnWork: '工作', btnSync: '同步', btnError: '报警', btnDecor: '装修房间',
+            drawerTitle: '装修房间 · 资产侧边栏', drawerClose: '关闭',
+            authTitle: '请输入装修验证码', authPlaceholder: '输入验证码', authVerify: '验证', authDefaultPassHint: '默认密码：1234（可随时让我帮你改，建议改成强密码）',
+            drawerVisibilityTip: '可见性：点击条目右侧眼睛按钮切换该资产显示',
+            hideDrawer: '👁 隐藏侧边栏', showDrawer: '👁 显示侧边栏',
+            assetHide: '隐藏', assetShow: '显示',
+            resetToDefault: '重置为默认资产', restorePrevAsset: '用上一版',
+            btnMove: '📦 搬新家', btnHome: '🐚 回老家', btnHomeLast: '↩️ 回上一个家', btnHomeFavorite: '⭐ 收藏这个家', btnBroker: '🤝 找中介', btnDIY: '🪚 自己装', btnBrokerGo: '听中介的',
+            homeFavTitle: '🏠 收藏的家', homeFavEmpty: '还没有收藏，先点”⭐ 收藏这个家”', homeFavApply: '替换到当前地图', homeFavDelete: '删除', homeFavSaved: '✅ 已收藏当前地图', homeFavApplied: '✅ 已替换为收藏地图', homeFavDeleted: '🗑️ 已删除收藏',
+            brokerHint: '你会给龙虾推荐什么样的房子',
+            brokerPromptPh: '例如：故宫主题、莫奈风格、地牢主题、兵马俑主题……',
+            brokerNeedPrompt: '请先输入中介方案描述',
+            brokerGenerating: '🏘️ 正在按中介方案生成底图，请稍候（约20-90秒）...',
+            brokerDone: '✅ 已按中介方案生成并替换底图，正在刷新房间...',
+            moveSuccess: '✅ 搬家成功！',
+            brokerMissingKey: '❌ 生图失败：缺少 GEMINI API Key，请在下方填写并保存后重试',
+            geminiPanelTitle: '🔐 API 设置（可折叠）', geminiHint: '可选：填写你的生图 API Key（留空不影响基础功能）', geminiApiDoc: '📘 如何申请 Google API Key', geminiInputPh: '粘贴 GEMINI_API_KEY（不会回显）', geminiSaveKey: '保存 Key', geminiMaskNoKey: '当前状态：未配置 Key', geminiMaskHasKey: '当前已配置：',
+            speedModeLabel: '生成模式', speedFast: '🍌2', speedQuality: '🍌Pro',
+            searchPlaceholder: '搜索资产名（如 desk / sofa / star）', loaded: '已加载', allAssets: '全部资产',
+            chooseImage: '上传素材', confirmUpload: '确认刷新', resetToDefault: '重置默认', restorePrevAsset: '恢复上版', uploadPending: '待上传', uploadTarget: '目标',
+            assetHintNotInScene: '当前场景未检测到此对象，仍可替换文件（刷新后生效）',
+            assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
+            showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
+            memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
+            roomTitle: '房 间', roomOpen: '🚪 开门', roomClosed: '🔒 关门', roomLoading: '加载中...', roomEmpty: '暂无房间',
+            loadingOffice: '正在加载 Star 的像素办公室...'
         };
 
-        function t(key) { return (I18N[uiLang] && I18N[uiLang][key]) || key; }
+        function t(key) { return I18N[key] || key; }
+
+        // 房间切换相关变量
+        let currentRoomId = null;
+        let rooms = [];
+
+        // 获取房间列表
+        function fetchRooms() {
+            return fetch('/rooms?t=' + Date.now(), { cache: 'no-store' })
+                .then(response => response.json())
+                .then(data => {
+                    rooms = Array.isArray(data) ? data : [];
+                    renderRoomList();
+                })
+                .catch(err => {
+                    console.error('Failed to fetch rooms:', err);
+                    const roomList = document.getElementById('room-list');
+                    if (roomList) {
+                        roomList.innerHTML = '<div style="color:#e94560;font-size:11px;text-align:center;padding:10px 0;">加载失败</div>';
+                    }
+                });
+        }
+
+        // 渲染房间列表
+        function renderRoomList() {
+            const roomList = document.getElementById('room-list');
+            if (!roomList) return;
+
+            if (rooms.length === 0) {
+                roomList.innerHTML = `<div style="color:#9ca3af;font-size:11px;text-align:center;padding:10px 0;">${t('roomEmpty')}</div>`;
+                return;
+            }
+
+            roomList.innerHTML = rooms.map(room => {
+                const isActive = currentRoomId === room.roomId;
+                // 判断房间是否开门：至少有一个 agent 不是 offline
+                const agents = room.agents || [];
+                const isOpen = agents.some(a => a.authStatus !== 'offline');
+                const statusClass = isOpen ? 'open' : 'closed';
+                const statusText = isOpen ? t('roomOpen') : t('roomClosed');
+                return `
+                    <div class="room-item ${isActive ? 'active' : ''}" onclick="switchRoom('${room.roomId}')">
+                        <div class="room-item-name">${escapeHtml(room.name || room.roomId)}</div>
+                        <div class="room-item-count ${statusClass}">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 切换房间
+        function switchRoom(roomId) {
+            currentRoomId = roomId;
+            renderRoomList();
+            // 调用 game.js 中的全局 switchRoom 函数
+            if (typeof window.switchRoom === 'function') {
+                window.switchRoom(roomId);
+            }
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         function renderBootLoadingText(percent) {
             const loadingEl = document.getElementById('loading-text');
             if (!loadingEl) return;
@@ -1404,19 +1479,6 @@
             setText('btn-state-syncing', 'btnSync');
             setText('btn-state-error', 'btnError');
             setText('btn-open-drawer', 'btnDecor');
-            const langButtons = [
-                { id: 'lang-btn-en', lang: 'en' },
-                { id: 'lang-btn-jp', lang: 'ja' },
-                { id: 'lang-btn-cn', lang: 'zh' }
-            ];
-            langButtons.forEach(({ id, lang }) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                const active = (uiLang === lang);
-                el.style.background = active ? '#22c55e' : '#333';
-                el.style.borderColor = active ? '#22c55e' : '#333';
-                el.style.color = '#fff';
-            });
 
             const drawerTitle = document.querySelector('#asset-drawer-header span');
             if (drawerTitle) drawerTitle.textContent = t('drawerTitle');
@@ -1459,6 +1521,8 @@
             if (memoTitle) memoTitle.textContent = t('memoTitle');
             const guestTitle = document.getElementById('guest-agent-panel-title');
             if (guestTitle) guestTitle.textContent = t('guestTitle');
+            const roomTitle = document.getElementById('room-panel-title');
+            if (roomTitle) roomTitle.textContent = t('roomTitle');
             const plaqueTitle = (typeof window.officeNameFromServer !== 'undefined' && window.officeNameFromServer) || t('officeTitle');
             if (window.officePlaqueText && window.officePlaqueText.setText) {
                 window.officePlaqueText.setText(plaqueTitle);
@@ -1473,29 +1537,6 @@
             }
             ensureMemoBgVisible();
             renderBootLoadingText(Number(loadingProgressBar?.style?.width?.replace('%','') || 0));
-        }
-
-        function setUILanguage(lang) {
-            if (!['zh', 'en', 'ja'].includes(lang)) return;
-            uiLang = lang;
-            localStorage.setItem('uiLang', uiLang);
-            applyLanguage();
-            updateSpeedModeUI();
-
-            // 语言切换后立即重绘资产侧栏，确保易懂名同步更新
-            renderAssetDrawerList();
-
-            // 语言切换后同步刷新已选资产的指导文案（上传区小字三语联动）
-            if (selectedAssetInfo && selectedAssetInfo.path) {
-                const inScene = !!mapAssetPathToSprite(selectedAssetInfo.path);
-                renderSelectedAssetGuidance(selectedAssetInfo.path, inScene);
-            }
-
-            // 语言切换时，当前正在显示的 loading 文案也实时切换
-            const overlay = document.getElementById('room-loading-overlay');
-            if (overlay && overlay.style.display === 'flex') {
-                showRoomLoadingOverlay();
-            }
         }
 
         // 检测浏览器是否支持 WebP
@@ -1630,24 +1671,6 @@
                 syncing: ['同步中：把今天锁进云里','备份不是仪式，是安全感','写入中…别断电','把变更交给时间戳','云端对齐：咔哒','同步完成前先别乱动','把未来的自己从灾难里救出来','多一份备份，少一份后悔'],
                 error: ['警报响了：先别慌','我闻到 bug 的味道了','先复现，再谈修复','把日志给我，我会说人话','错误不是敌人，是线索','把影响面圈起来','先止血，再手术','我在：马上定位根因','别怕，这种我见多了','报警中：让问题自己现形'],
                 cat: ['喵~','咕噜咕噜…','尾巴摇一摇','晒太阳最开心','有人来看我啦','我是这个办公室的吉祥物','伸个懒腰','今天的罐罐准备好了吗','呼噜呼噜','这个位置视野最好']
-            },
-            en: {
-                idle: ['On standby: ears up.','I’m here, ready to roll.','Let’s tidy the desk first.','Taking a quick brain breeze.','Efficient and elegant, as always.','Waiting for a more precise strike.','Coffee is warm, ideas too.','Giving you a quiet backstage buff.','Status: calm / charging.','Cat says: no rush, we’re good.'],
-                writing: ['Focus mode on: do not disturb.','Let’s clear the critical path first.','I’ll make the complex simple.','Putting bugs in a cage.','Save first, then continue.','Every step should be rollback-safe.','Today’s progress is tomorrow’s confidence.','Converge first, then diverge.','Making the system more explainable.','Steady—this is winnable.'],
-                researching: ['Digging the evidence chain.','Let me boil info into conclusions.','Found it: key clue here.','Control variables first.','Checking why this happens.','Turn intuition into verification.','Locate first, optimize next.','No rush—draw the causality map first.'],
-                executing: ['Executing—don’t blink.','Split tasks, conquer one by one.','Pipeline is running.','One-click push: go go.','Let the results speak.','Build MVP first, then craft beauty.'],
-                syncing: ['Syncing: lock today into the cloud.','Backup is safety, not ceremony.','Writing… don’t cut power.','Handing changes to timestamps.','Cloud alignment: click.','Don’t shake it before sync finishes.','Saving future-us from disasters.','One more backup, one less regret.'],
-                error: ['Alarm on—stay calm.','I can smell a bug.','Reproduce first, then fix.','Give me logs; I’ll translate.','Errors are clues, not enemies.','Circle the impact area first.','Stop the bleeding, then surgery.','On it: tracing root cause now.','Don’t worry, seen this many times.','Alert mode: make the issue reveal itself.'],
-                cat: ['Meow~','Purr purr…','Tail wiggle activated.','Sunbathing is the best.','Someone came to see me!','I’m the office mascot.','Big stretch~','Is today’s snack ready yet?','Rrrrr purr…','Best view spot secured.']
-            },
-            ja: {
-                idle: ['待機中：耳はピン。','ここにいるよ、いつでも開始OK。','まず机を整えよう。','ふー、頭に風を通す。','今日も上品に高効率で。','待つのは、より正確な一撃のため。','コーヒーも発想もまだ温かい。','裏側でそっとバフ中。','状態：静心 / 充電。','猫より：ゆっくりでも大丈夫。'],
-                writing: ['集中モード：お静かに。','まずはクリティカルパスを通す。','複雑をシンプルにする。','バグはケージへ。','途中でもまず保存。','すべてをロールバック可能に。','今日の進捗は明日の自信。','まず収束、次に発散。','システムをより説明可能に。','落ち着いて、勝てる。'],
-                researching: ['証拠チェーンを掘っています。','情報を結論まで煮詰めます。','見つけた：鍵はここ。','まず変数を制御。','なぜこうなるか調査中。','直感を検証へ。','先に特定、次に最適化。','急がず因果マップから。'],
-                executing: ['実行中：まばたき厳禁。','タスクを分割して各個撃破。','パイプライン起動。','ワンクリック前進：いくぞ。','結果に語らせる。','まず最小実用、次に美しさ。'],
-                syncing: ['同期中：今日をクラウドに封印。','バックアップは儀式じゃなく安心。','書き込み中…電源オフ厳禁。','変更はタイムスタンプへ。','クラウド整列：カチッ。','同期完了まで触らないで。','未来の自分を災害から救う。','バックアップ一つ、後悔一つ減る。'],
-                error: ['警報：まず落ち着いて。','バグの気配を感じる。','再現してから修正へ。','ログをください、人語にします。','エラーは敵ではなく手がかり。','まず影響範囲を囲う。','止血してから手術。','今すぐ根因を追跡中。','大丈夫、よくある案件。','警戒モード：問題を可視化する。'],
-                cat: ['ニャー','ゴロゴロ…','しっぽフリフリ。','ひなたぼっこ最高。','見に来てくれた！','このオフィスのマスコットです。','ぐーっと伸び。','今日のおやつ、準備できた？','ゴロゴロ。','ここ、いちばん見晴らしがいい。']
             }
         };
 
@@ -1713,11 +1736,13 @@
         const DEMO_MODE = new URLSearchParams(window.location.search).get('demo') === '1';
         const FETCH_INTERVAL = 1000;
         const GUEST_AGENTS_FETCH_INTERVAL = 3500;
+        const ROOMS_FETCH_INTERVAL = 10000; // 10秒刷新一次房间列表
         const BLINK_INTERVAL = 2500;
         const BUBBLE_INTERVAL = 8000;
         const CAT_BUBBLE_INTERVAL = 18000; // cat bubble much less frequent
         let lastCatBubble = 0;
         let lastGuestAgentsFetch = 0;
+        let lastRoomsFetch = 0;
         let lastGuestBubbleAt = 0;
         const TYPEWRITER_DELAY = 50;
         let lastSeenGuestIds = new Set(); // 用于检测新加入的访客，触发欢迎气泡
@@ -2772,38 +2797,6 @@ function toggleBrokerPanel() {
                     '正在解锁下一片数字海域……',
                     '正在把好奇心调到满格……',
                     '正在等待旅程投递下一张门牌号……'
-                ],
-                en: [
-                    'Packing today’s luggage of inspiration…',
-                    'Drawing the digital coordinates for the next stop…',
-                    'Checking the destination of this drift…',
-                    'Folding the office into portable mode…',
-                    'Installing a travel buff on the claws…',
-                    'Matching the creative climate for the next chapter…',
-                    'Switching the time zone to adventure mode…',
-                    'Receiving Wi‑Fi heartbeats from an unfamiliar block…',
-                    'Previewing the sea-breeze BGM of the next stop…',
-                    'Loading a new room you might just fall in love with…',
-                    'Preparing an intro for unknown neighbors…',
-                    'Unlocking the next digital sea…',
-                    'Turning curiosity up to max…',
-                    'Waiting for the journey to deliver the next door number…'
-                ],
-                ja: [
-                    '今日のひらめき荷物を梱包しています……',
-                    '次の目的地のデジタル座標を抽出しています……',
-                    '今回の漂流先を確認しています……',
-                    'オフィスを携帯モードに折りたたんでいます……',
-                    'ハサミに遠征 Buff を装着しています……',
-                    '次の創作区間の気候をマッチングしています……',
-                    '時差を冒険モードに切り替えています……',
-                    '見知らぬ街区の Wi‑Fi ハートビートを受信しています……',
-                    '次の目的地の潮風 BGM を試聴しています……',
-                    '「好きになるかもしれない」新しい部屋を読み込んでいます……',
-                    '未知のご近所さん向けに自己紹介を準備しています……',
-                    '次のデジタル海域をアンロックしています……',
-                    '好奇心を最大値まで上げています……',
-                    '旅が次の番地を届けるのを待っています……'
                 ]
             };
             const steps = loadingTexts[uiLang] || loadingTexts.zh;
@@ -3840,7 +3833,13 @@ function toggleBrokerPanel() {
             // demo 随机状态先更新（不依赖后端）
             maybeRandomizeDemoVisitors();
 
-            return fetch('/agents?t=' + Date.now(), { cache: 'no-store' })
+            // 构建请求 URL，包含房间过滤
+            let url = '/agents?t=' + Date.now();
+            if (currentRoomId) {
+                url += '&roomId=' + encodeURIComponent(currentRoomId);
+            }
+
+            return fetch(url, { cache: 'no-store' })
                 .then(response => response.json())
                 .then(data => {
                     // 无论后端返回是否为数组，demo=1 都应保证本地 demo 访客可见
@@ -3870,7 +3869,7 @@ function toggleBrokerPanel() {
                                     const lang = uiLang;
                                     const welcomeTexts = {
                                         zh: [`欢迎 ${newAgent.name} 来到办公室～`,`Hi ${newAgent.name}，一起开工吧`,`${newAgent.name} 已加入，欢迎！`],
-                                        en: [`Welcome ${newAgent.name} to the office!`,`Hi ${newAgent.name}, let’s build something.`,`${newAgent.name} just joined — welcome!`],
+                                        en: [`Welcome ${newAgent.name} to the office!`,`Hi ${newAgent.name}, let's build something.`,`${newAgent.name} just joined — welcome!`],
                                         ja: [`${newAgent.name} さん、オフィスへようこそ！`,`Hi ${newAgent.name}、一緒に進めよう。`,`${newAgent.name} さんが参加しました、歓迎！`]
                                     };
                                     const langPack = BUBBLE_TEXTS[lang] || BUBBLE_TEXTS.zh;
@@ -4483,6 +4482,7 @@ function toggleBrokerPanel() {
         function update(time) {
             if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
             if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) { fetchGuestAgents(); lastGuestAgentsFetch = time; }
+            if (time - lastRoomsFetch > ROOMS_FETCH_INTERVAL) { fetchRooms(); lastRoomsFetch = time; }
 
             // 兜底：非 idle 时确保机房动画在播，idle 时静止
             const effectiveStateForServer = pendingDesiredState || currentState;
@@ -4879,8 +4879,8 @@ function toggleBrokerPanel() {
             window.catBubble.setDepth(2100); // top layer above cat
             setTimeout(() => { if (window.catBubble) { window.catBubble.destroy(); window.catBubble = null; } }, 4000);
         }
-
-        // 假 Agent 气泡逻辑已移除，统一以真实 /agents 数据为准
+        // 初始化房间列表
+        fetchRooms();
 
         // 启动游戏
         initGame();

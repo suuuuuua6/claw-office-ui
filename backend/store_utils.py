@@ -128,3 +128,71 @@ def load_join_keys(path: str) -> dict:
 def save_join_keys(path: str, data: dict):
     """Persist join keys to path."""
     _save_json(path, data)
+
+
+# ============================================================================
+# Agents Config (预注册 agent 配置，用于 HMAC 认证)
+# ============================================================================
+
+DEFAULT_AGENTS_CONFIG = {
+    "agents": [],
+    "defaults": {},
+    "settings": {
+        "offlineTimeout": 300,
+        "signatureExpireSeconds": 60,
+    }
+}
+
+
+def load_agents_config(path: str) -> dict:
+    """Load agents config from path; return default structure if missing or invalid.
+
+    Agents config contains:
+    - agents: list of pre-registered agents with id, name, secretKey (optional), avatar
+    - defaults: shared config (secretKey, avatar) inherited by all agents
+    - settings: timeout and security settings
+    """
+    if os.path.exists(path):
+        try:
+            data = _load_json(path)
+            if isinstance(data, dict):
+                # 确保必要的字段存在
+                if "agents" not in data:
+                    data["agents"] = []
+                if "defaults" not in data:
+                    data["defaults"] = {}
+                if "settings" not in data:
+                    data["settings"] = DEFAULT_AGENTS_CONFIG["settings"]
+                return data
+        except Exception:
+            pass
+    return dict(DEFAULT_AGENTS_CONFIG)
+
+
+def save_agents_config(path: str, data: dict):
+    """Persist agents config to path; chmod 0o600 for security."""
+    _save_json(path, data)
+    try:
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
+
+
+def find_agent_by_id(config: dict, agent_id: str) -> dict | None:
+    """Find agent config by agentId, merging with defaults.
+
+    Args:
+        config: agents config dict (with agents, defaults, settings)
+        agent_id: agent ID to find
+
+    Returns:
+        Merged agent config dict (defaults + agent-specific) or None if not found
+    """
+    defaults = config.get("defaults", {})
+    for agent in config.get("agents", []):
+        if agent.get("agentId") == agent_id:
+            # 合并: defaults 作为基础，agent 特定配置覆盖
+            merged = dict(defaults)
+            merged.update(agent)
+            return merged
+    return None

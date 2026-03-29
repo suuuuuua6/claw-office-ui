@@ -203,6 +203,16 @@ let agents = {}; // agentId -> sprite/container
 let lastAgentsFetch = 0;
 const AGENTS_FETCH_INTERVAL = 2500;
 
+// 房间切换相关
+let currentRoomId = null;
+
+// 切换房间
+function switchRoom(roomId) {
+  currentRoomId = roomId;
+  fetchAgents(); // 立即刷新 agents
+}
+window.switchRoom = switchRoom; // 暴露给外部调用
+
 // agent 颜色配置
 const AGENT_COLORS = {
   star: 0xffd700,
@@ -912,7 +922,11 @@ function showCatBubble() {
 }
 
 function fetchAgents() {
-  fetch('/agents?t=' + Date.now(), { cache: 'no-store' })
+  let url = '/agents?t=' + Date.now();
+  if (currentRoomId) {
+    url += '&roomId=' + encodeURIComponent(currentRoomId);
+  }
+  fetch(url, { cache: 'no-store' })
     .then(response => response.json())
     .then(data => {
       if (!Array.isArray(data)) return;
@@ -951,8 +965,7 @@ function renderAgent(agent) {
   const agentId = agent.agentId;
   const name = agent.name || 'Agent';
   const area = agent.area || 'breakroom';
-  const authStatus = agent.authStatus || 'pending';
-  const isMain = !!agent.isMain;
+  const authStatus = agent.authStatus || 'approved';
 
   // 获取这个 agent 在区域里的位置
   const pos = getAreaPosition(area, agent._slotIndex || 0);
@@ -960,70 +973,67 @@ function renderAgent(agent) {
   const baseY = pos.y;
 
   // 颜色
-  const bodyColor = AGENT_COLORS[agentId] || AGENT_COLORS.default;
   const nameColor = NAME_TAG_COLORS[authStatus] || NAME_TAG_COLORS.default;
 
-  // 透明度（离线/待批准/拒绝时变半透明）
+  // 透明度（离线时变半透明）
   let alpha = 1;
-  if (authStatus === 'pending') alpha = 0.7;
-  if (authStatus === 'rejected') alpha = 0.4;
   if (authStatus === 'offline') alpha = 0.5;
 
   if (!agents[agentId]) {
-    // 新建 agent
+    // 新建 agent - 所有 agent 使用统一的渲染方式
     const container = game.add.container(baseX, baseY);
-    container.setDepth(1200 + (isMain ? 100 : 0)); // 放到最顶层！
+    container.setDepth(1200); // 统一深度，不再区分 isMain
 
-    // 像素小人：用星星图标，更明显
+    // 像素小人图标
     const starIcon = game.add.text(0, 0, '⭐', {
       fontFamily: 'ArkPixel, monospace',
       fontSize: '32px'
     }).setOrigin(0.5);
     starIcon.name = 'starIcon';
 
-    // 名字标签（漂浮）
+    // 名牌背景（半透明黑色）
+    const nameTagBg = game.add.rectangle(0, -36, name.length * 12 + 16, 20, 0x000000, 0.6);
+    nameTagBg.name = 'nameTagBg';
+
+    // 名字标签
     const nameTag = game.add.text(0, -36, name, {
       fontFamily: 'ArkPixel, monospace',
       fontSize: '14px',
-      fill: '#' + nameColor.toString(16).padStart(6, '0'),
+      fill: '#ffffff',
       stroke: '#000',
-      strokeThickness: 3,
-      backgroundColor: 'rgba(255,255,255,0.95)'
+      strokeThickness: 2
     }).setOrigin(0.5);
     nameTag.name = 'nameTag';
 
-    // 状态小点（绿色/黄色/红色）
-    let dotColor = 0x64748b;
-    if (authStatus === 'approved') dotColor = 0x22c55e;
-    if (authStatus === 'pending') dotColor = 0xf59e0b;
-    if (authStatus === 'rejected') dotColor = 0xef4444;
+    // 状态小点（绿色=在线， 灰色=离线）
+    let dotColor = 0x22c55e; // approved = green
     if (authStatus === 'offline') dotColor = 0x94a3b8;
     const statusDot = game.add.circle(20, -20, 5, dotColor, alpha);
     statusDot.setStrokeStyle(2, 0x000000, alpha);
     statusDot.name = 'statusDot';
 
-    container.add([starIcon, statusDot, nameTag]);
+    container.add([starIcon, nameTagBg, nameTag, statusDot]);
     agents[agentId] = container;
   } else {
     // 更新 agent
     const container = agents[agentId];
     container.setPosition(baseX, baseY);
     container.setAlpha(alpha);
-    container.setDepth(1200 + (isMain ? 100 : 0));
 
-    // 更新名字和颜色（如果变化）
+    // 更新名字
     const nameTag = container.getAt(2);
+    const nameTagBg = container.getAt(1);
     if (nameTag && nameTag.name === 'nameTag') {
       nameTag.setText(name);
-      nameTag.setFill('#' + (NAME_TAG_COLORS[authStatus] || NAME_TAG_COLORS.default).toString(16).padStart(6, '0'));
+    }
+    // 更新名牌背景宽度
+    if (nameTagBg && nameTagBg.name === 'nameTagBg') {
+      nameTagBg.setSize(name.length * 12 + 16, 20);
     }
     // 更新状态点颜色
-    const statusDot = container.getAt(1);
+    const statusDot = container.getAt(3);
     if (statusDot && statusDot.name === 'statusDot') {
-      let dotColor = 0x64748b;
-      if (authStatus === 'approved') dotColor = 0x22c55e;
-      if (authStatus === 'pending') dotColor = 0xf59e0b;
-      if (authStatus === 'rejected') dotColor = 0xef4444;
+      let dotColor = 0x22c55e;
       if (authStatus === 'offline') dotColor = 0x94a3b8;
       statusDot.fillColor = dotColor;
     }
