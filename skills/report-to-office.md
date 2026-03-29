@@ -57,7 +57,7 @@ X-Signature: hmac-sha256=<signature>
 
 **签名算法**: `HMAC-SHA256(timestamp + "\n" + body, secretKey)`
 
-配置从 `openclaw.json` 的 `agents.defaults.starOffice` 读取。
+配置从 `openclaw.json` 的 `agents.defaults.clawOffice` 读取。
 
 ## 注意事项
 

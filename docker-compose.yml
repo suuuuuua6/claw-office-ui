@@ -1,6 +1,7 @@
 services:
-  star-office:
+  claw-office:
     build: .
+    container_name: claw-office
     ports:
       - "19000:19000"
     volumes:
@@ -18,9 +19,16 @@ services:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-star-office-dev-secret-change-in-prod}
       - ASSET_DRAWER_PASS=${ASSET_DRAWER_PASS:-1234}
     restart: unless-stopped
+    networks:
+      - claw-office-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+networks:
+  claw-office-net:
+    name: claw-office-net
+    external: true

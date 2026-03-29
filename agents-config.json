@@ -1,6 +1,6 @@
 {
   "defaults": {
-    "secretKey": "z5wKfgiOwCfFTtQSR-ThM0nOa-IYCvXoqo4PwsxereU"
+    "secretKey": "z5wKkskblzdjdQSR-ThM0nOa-IYCvXoqo4PwsxereU"
   },
   "agents": [
     {"agentId": "main", "name": "主助手", "avatar": "star", "enabled": true},
