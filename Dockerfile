@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 
 # 复制前端静态文件
-COPY frontend/ ./static/
+COPY frontend/ ./frontend/
 
 # 复制配置文件
 COPY agents-config.json .
