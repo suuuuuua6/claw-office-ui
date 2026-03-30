@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Star Office UI - Backend State Service"""
+"""Claw Office UI - Backend State Service"""
 
 from flask import Flask, jsonify, send_from_directory, make_response, request, session
 from datetime import datetime, timedelta
@@ -98,7 +98,7 @@ STATE_TO_AREA_MAP = {
 
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="/static")
-app.secret_key = os.getenv("FLASK_SECRET_KEY") or os.getenv("STAR_OFFICE_SECRET") or "star-office-dev-secret-change-me"
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or os.getenv("CLAW_OFFICE_SECRET") or os.getenv("STAR_OFFICE_SECRET") or "claw-office-dev-secret-change-me"
 
 # Session hardening
 app.config.update(
@@ -123,7 +123,7 @@ ASSET_DRAWER_PASS_DEFAULT = os.getenv("ASSET_DRAWER_PASS", "1234")
 if is_production_mode():
     hardening_errors = []
     if not is_strong_secret(str(app.secret_key)):
-        hardening_errors.append("FLASK_SECRET_KEY / STAR_OFFICE_SECRET is weak (need >=24 chars, non-default)")
+        hardening_errors.append("FLASK_SECRET_KEY / CLAW_OFFICE_SECRET is weak (need >=24 chars, non-default)")
     if not is_strong_drawer_pass(ASSET_DRAWER_PASS_DEFAULT):
         hardening_errors.append("ASSET_DRAWER_PASS is weak (do not use default 1234; recommend >=8 chars)")
     if hardening_errors:
@@ -1430,7 +1430,7 @@ def health():
     """Health check"""
     return jsonify({
         "status": "ok",
-        "service": "star-office-ui",
+        "service": "claw-office-ui",
         "timestamp": datetime.now().isoformat(),
     })
 
@@ -2269,7 +2269,7 @@ if __name__ == "__main__":
         backend_port = 19000
 
     print("=" * 50)
-    print("Star Office UI - Backend State Service")
+    print("Claw Office UI - Backend State Service")
     print("=" * 50)
     print(f"State file: {STATE_FILE}")
     print(f"Listening on: http://0.0.0.0:{backend_port}")
@@ -2284,7 +2284,7 @@ if __name__ == "__main__":
     else:
         weak_flags = []
         if not is_strong_secret(str(app.secret_key)):
-            weak_flags.append("weak FLASK_SECRET_KEY/STAR_OFFICE_SECRET")
+            weak_flags.append("weak FLASK_SECRET_KEY/CLAW_OFFICE_SECRET")
         if not is_strong_drawer_pass(ASSET_DRAWER_PASS_DEFAULT):
             weak_flags.append("weak ASSET_DRAWER_PASS")
         if weak_flags:

@@ -40,7 +40,7 @@ except ImportError:
 
 # 默认配置文件路径
 DEFAULT_WORKSPACE = os.path.join(os.path.expanduser("~"), ".openclaw", "workspace")
-CONFIG_FILE_ENV = "STAR_OFFICE_AGENT_CONFIG"
+CONFIG_FILE_ENV = "CLAW_OFFICE_AGENT_CONFIG"
 
 
 def get_config_path() -> str:
@@ -82,12 +82,14 @@ def read_local_state() -> dict:
     """读取本地状态
 
     优先级：
-    1. 环境变量 STAR_OFFICE_STATE_FILE 指向的 state.json
+    1. 环境变量 CLAW_OFFICE_STATE_FILE 指向的 state.json
     2. workspace 目录下的 state.json
     3. 默认返回 idle 状态
     """
     # 检查环境变量
-    state_file = os.environ.get("STAR_OFFICE_STATE_FILE", "").strip()
+    state_file = os.environ.get("CLAW_OFFICE_STATE_FILE", "").strip()
+    if not state_file:
+        state_file = os.environ.get("STAR_OFFICE_STATE_FILE", "").strip()
     if not state_file:
         workspace = os.environ.get("OPENCLAW_WORKSPACE", DEFAULT_WORKSPACE)
         state_file = os.path.join(workspace, "state.json")
@@ -166,7 +168,7 @@ def do_heartbeat(config: dict, state: dict) -> bool:
 
 def main():
     print("=" * 50)
-    print("Star Office UI - Agent Heartbeat Client")
+    print("Claw Office UI - Agent Heartbeat Client")
     print("=" * 50)
 
     config = load_config()

@@ -113,7 +113,7 @@ def test_heartbeat_api():
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("Star Office UI - Heartbeat Test Suite")
+    print("Claw Office UI - Heartbeat Test Suite")
     print("=" * 50)
 
     test_signature()

@@ -1180,17 +1180,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .room-item-count {
-            color: #888;
-            font-size: 10px;
-            margin-top: 2px;
-        }
-        .room-item-count.open {
-            color: #22c55e;
-        }
-        .room-item-count.closed {
-            color: #64748b;
-        }
         }
     </style>
 </head>
@@ -1384,7 +1373,7 @@
             assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
             showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
             memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
-            roomTitle: '房 间', roomOpen: '🚪 开门', roomClosed: '🔒 关门', roomLoading: '加载中...', roomEmpty: '暂无房间',
+            roomTitle: '房 间', roomLoading: '加载中...', roomEmpty: '暂无房间',
             loadingOffice: '正在加载 Star 的像素办公室...'
         };
 
@@ -1423,15 +1412,9 @@
 
             roomList.innerHTML = rooms.map(room => {
                 const isActive = currentRoomId === room.roomId;
-                // 判断房间是否开门：至少有一个 agent 不是 offline
-                const agents = room.agents || [];
-                const isOpen = agents.some(a => a.authStatus !== 'offline');
-                const statusClass = isOpen ? 'open' : 'closed';
-                const statusText = isOpen ? t('roomOpen') : t('roomClosed');
                 return `
                     <div class="room-item ${isActive ? 'active' : ''}" onclick="switchRoom('${room.roomId}')">
                         <div class="room-item-name">${escapeHtml(room.name || room.roomId)}</div>
-                        <div class="room-item-count ${statusClass}">${statusText}</div>
                     </div>
                 `;
             }).join('');
@@ -1441,6 +1424,14 @@
         function switchRoom(roomId) {
             currentRoomId = roomId;
             renderRoomList();
+            // 更新办公室牌匾标题
+            const room = rooms.find(r => r.roomId === roomId);
+            if (room && room.name) {
+                if (window.officePlaqueText && window.officePlaqueText.setText) {
+                    window.officePlaqueText.setText(room.name);
+                }
+                window.officeNameFromServer = room.name;
+            }
             // 调用 game.js 中的全局 switchRoom 函数
             if (typeof window.switchRoom === 'function') {
                 window.switchRoom(roomId);

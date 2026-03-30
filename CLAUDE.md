@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Star Office UI is a pixel-art style AI office dashboard that visualizes AI agent work status in real-time. It shows "who is doing what, what was done yesterday, and whether they're online now." Supports multi-agent collaboration, CN/EN/JP trilingual interface, AI-generated room backgrounds, and desktop pet mode.
+Claw Office UI is a pixel-art style AI office dashboard that visualizes AI agent work status in real-time. It shows "who is doing what, what was done yesterday, and whether they're online now." Supports multi-agent collaboration, CN/EN/JP trilingual interface, AI-generated room backgrounds, and desktop pet mode.
 
 ## Commands
 
@@ -34,7 +34,7 @@ python3 scripts/smoke_test.py --base-url http://127.0.0.1:19000
 ### Environment Variables
 
 - `STAR_BACKEND_PORT`: Backend port (default: 19000)
-- `FLASK_SECRET_KEY` / `STAR_OFFICE_SECRET`: Flask session secret (production: must be >=24 chars)
+- `FLASK_SECRET_KEY` / `CLAW_OFFICE_SECRET`: Flask session secret (production: must be >=24 chars)
 - `ASSET_DRAWER_PASS`: Sidebar password (production: must be >=8 chars, not default "1234")
 - `GEMINI_API_KEY`: API key for AI background generation
 - `GEMINI_MODEL`: Model for image generation (`nanobanana-pro` or `nanobanana-2`)
@@ -109,8 +109,8 @@ State synonyms are normalized (e.g., `working`/`busy`→`writing`, `run`→`exec
 
 ### Security Notes
 
-- Production mode: detected via `RENDER`/` Railway` env vars or non-localhost host
-- Production requires strong `FLASK_SECRET_KEY` and `ASSET_DRAWER_PASS`
+- Production mode: detected via `CLAW_OFFICE_ENV=production` or `RENDER`/`Railway` env vars or non-localhost host
+- Production requires strong `FLASK_SECRET_KEY`/`CLAW_OFFICE_SECRET` and `ASSET_DRAWER_PASS`
 - Session cookies: HttpOnly, SameSite=Lax, Secure in production
 - Sidebar password protects asset management and layout editing
 

@@ -41,9 +41,12 @@ OPENCLAW_HOME = os.environ.get("OPENCLAW_HOME") or os.path.join(os.path.expandus
 OPENCLAW_WORKSPACE_DIR = os.environ.get("OPENCLAW_WORKSPACE_DIR") or os.path.join(OPENCLAW_HOME, "workspace")
 
 DEFAULT_STATE_CANDIDATES = [
+    os.path.join(OPENCLAW_WORKSPACE_DIR, "claw-office-ui", "state.json"),
     os.path.join(OPENCLAW_WORKSPACE_DIR, "star-office-ui", "state.json"),
     os.path.join(OPENCLAW_WORKSPACE_DIR, "state.json"),
-    "/root/.openclaw/workspace/Star-Office-UI/state.json",  # 当前仓库（大小写精确）
+    "/root/.openclaw/workspace/Claw-Office-UI/state.json",  # 当前仓库（大小写精确）
+    "/root/.openclaw/workspace/claw-office-ui/state.json",
+    "/root/.openclaw/workspace/Star-Office-UI/state.json",  # 历史/兼容路径
     "/root/.openclaw/workspace/star-office-ui/state.json",  # 历史/兼容路径
     "/root/.openclaw/workspace/state.json",
     os.path.join(os.getcwd(), "state.json"),

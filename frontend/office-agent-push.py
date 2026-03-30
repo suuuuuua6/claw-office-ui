@@ -35,7 +35,9 @@ STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "office-ag
 # 优先读取本机 OpenClaw 工作区的状态文件（更贴合 AGENTS.md 的工作流）
 # 支持自动发现，减少对方手动配置成本。
 DEFAULT_STATE_CANDIDATES = [
-    "/root/.openclaw/workspace/Star-Office-UI/state.json",  # 当前仓库（大小写精确）
+    "/root/.openclaw/workspace/Claw-Office-UI/state.json",  # 当前仓库（大小写精确）
+    "/root/.openclaw/workspace/claw-office-ui/state.json",
+    "/root/.openclaw/workspace/Star-Office-UI/state.json",  # 历史/兼容路径
     "/root/.openclaw/workspace/star-office-ui/state.json",  # 历史/兼容路径
     "/root/.openclaw/workspace/state.json",
     os.path.join(os.getcwd(), "state.json"),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update Star Office UI state (for testing or agent-driven sync).
+"""Update Claw Office UI state (for testing or agent-driven sync).
 
 For automatic state sync from OpenClaw: add a rule in your agent SOUL.md or AGENTS.md:
   Before starting a task: run `python3 set_state.py writing "doing XYZ"`.
@@ -13,8 +13,11 @@ import sys
 from datetime import datetime
 
 STATE_FILE = os.environ.get(
-    "STAR_OFFICE_STATE_FILE",
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json"),
+    "CLAW_OFFICE_STATE_FILE",
+    os.environ.get(
+        "STAR_OFFICE_STATE_FILE",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json"),
+    ),
 )
 
 VALID_STATES = [

@@ -3,12 +3,12 @@
     "secretKey": "z5wKkskblzdjdQSR-ThM0nOa-IYCvXoqo4PwsxereU"
   },
   "agents": [
-    {"agentId": "main", "name": "主助手", "avatar": "star", "enabled": true},
+    {"agentId": "main", "name": "主助手", "avatar": "guest_role_1", "enabled": true},
     {"agentId": "ling", "name": "小绫", "avatar": "guest_role_1", "enabled": true},
-    {"agentId": "yi", "name": "小依", "avatar": "guest_role_2", "enabled": true},
-    {"agentId": "hua", "name": "小华", "avatar": "guest_role_3", "enabled": true},
-    {"agentId": "xiaosu", "name": "小苏", "avatar": "guest_role_4", "enabled": true},
-    {"agentId": "jiuku", "name": "九酷助手", "avatar": "guest_role_5", "enabled": true}
+    {"agentId": "yi", "name": "小依", "avatar": "guest_role_1", "enabled": true},
+    {"agentId": "hua", "name": "小华", "avatar": "guest_role_1", "enabled": true},
+    {"agentId": "xiaosu", "name": "小苏", "avatar": "guest_role_1", "enabled": true},
+    {"agentId": "jiuku", "name": "九酷助手", "avatar": "guest_role_1", "enabled": true}
   ],
   "rooms": {
     "main": {"name": "主助手的办公室", "ownerId": "main"},

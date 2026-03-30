@@ -1,4 +1,4 @@
-// Star Office UI - 游戏主逻辑
+// Claw Office UI - 游戏主逻辑
 // 依赖: layout.js（必须在这个之前加载）
 
 // 检测浏览器是否支持 WebP
@@ -392,6 +392,7 @@ function create() {
     stroke: '#000',
     strokeThickness: 2
   }).setOrigin(0.5);
+  window.officePlaqueText = plaqueText; // 暴露为全局变量，供房间切换时更新
   game.add.text(plaqueX - 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
   game.add.text(plaqueX + 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
 

@@ -1,6 +1,6 @@
-# Star-Office-UI 项目维护 SOP（轻量版）
+# Claw-Office-UI 项目维护 SOP（轻量版）
 
-> 目标：让 Star-Office-UI 在继续增长的同时，保持仓库干净、回复友好、节奏稳定、社区感明确。
+> 目标：让 Claw-Office-UI 在继续增长的同时，保持仓库干净、回复友好、节奏稳定、社区感明确。
 
 ---
 

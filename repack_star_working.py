@@ -23,7 +23,7 @@ import math
 import os
 from PIL import Image
 
-ROOT = "/root/.openclaw/workspace/star-office-ui"
+ROOT = "/root/.openclaw/workspace/claw-office-ui"
 IN_PATH = os.path.join(ROOT, "frontend", "star-working-spritesheet.png")
 OUT_PATH = os.path.join(ROOT, "frontend", "star-working-spritesheet-grid.png")
 

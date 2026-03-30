@@ -36,8 +36,8 @@ docker-compose logs -f
 {
   "agents": {
     "defaults": {
-      "starOffice": {
-        "officeUrl": "http://star-office:19000",
+      "clawOffice": {
+        "officeUrl": "http://claw-office:19000",
         "secretKey": "z5wKfgiOwCfFTtQSR-ThM0nOa-IYCvXoqo4PwsxereU"
       }
     }
@@ -47,14 +47,14 @@ docker-compose logs -f
 
 ### Docker 网络互通
 
-如果 OpenClaw 和 Star Office 在同一台服务器：
+如果 OpenClaw 和 Claw Office 在同一台服务器：
 
 **方案 1：同一 docker-compose**
 
 ```yaml
 services:
-  star-office:
-    build: ./Star-Office-UI
+  claw-office:
+    build: ./Claw-Office-UI
     ports:
       - "19000:19000"
     networks:
@@ -69,7 +69,7 @@ networks:
   office-net:
 ```
 
-OpenClaw 配置 `officeUrl: http://star-office:19000`
+OpenClaw 配置 `officeUrl: http://claw-office:19000`
 
 **方案 2：使用宿主机 IP**
 

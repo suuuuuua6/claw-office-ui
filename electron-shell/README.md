@@ -14,7 +14,7 @@
 ## 启动方式
 
 ```bash
-cd "/Users/wangzhaohan/Documents/GitHub/Star-Office-UI/electron-shell"
+cd "/Users/wangzhaohan/Documents/GitHub/Claw-Office-UI/electron-shell"
 npm install
 npm run dev
 ```

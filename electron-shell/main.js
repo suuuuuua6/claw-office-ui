@@ -3,7 +3,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const net = require("net");
-const APP_NAME = "Star Office UI";
+const APP_NAME = "Claw Office UI";
 const BACKEND_HOST = process.env.STAR_BACKEND_HOST || "127.0.0.1";
 const rawBackendPort = Number(process.env.STAR_BACKEND_PORT || 19000);
 const BACKEND_PORT = Number.isFinite(rawBackendPort) && rawBackendPort > 0 ? rawBackendPort : 19000;
@@ -68,6 +68,10 @@ function findProjectRoot() {
 
   const home = process.env.HOME || "";
   const candidates = [
+    path.join(home, "Documents", "GitHub", "Claw-Office-UI"),
+    path.join(home, "GitHub", "Claw-Office-UI"),
+    path.join(home, "Documents", "Claw-Office-UI"),
+    path.join(home, "Claw-Office-UI"),
     path.join(home, "Documents", "GitHub", "Star-Office-UI"),
     path.join(home, "GitHub", "Star-Office-UI"),
     path.join(home, "Documents", "Star-Office-UI"),
@@ -321,7 +325,7 @@ function createWindows(projectRoot) {
       nodeIntegration: false,
     },
   });
-  miniWindow.setTitle("Star Office UI Mini");
+  miniWindow.setTitle("Claw Office UI Mini");
 
   const v = Date.now();
   const mainUrl = `${BACKEND_BASE_URL}/electron-standalone?desktop=1&v=${v}`;

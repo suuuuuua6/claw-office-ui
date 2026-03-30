@@ -1,10 +1,10 @@
-# PR Draft — Star Office UI March Refresh
+# PR Draft — Claw Office UI March Refresh
 
 ## Title
 feat: asset editor + i18n + loading UX + sprite pipeline + security/perf refinements
 
 ## Summary
-This PR delivers a full refresh of Star Office UI across UX, asset pipeline, localization, stability, and deployment security.
+This PR delivers a full refresh of Claw Office UI across UX, asset pipeline, localization, stability, and deployment security.
 
 ### What changed
 

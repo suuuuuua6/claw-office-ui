@@ -9,7 +9,7 @@ services:
       - ./agents-config.json:/app/agents-config.json
     environment:
       - STAR_BACKEND_PORT=19000
-      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-star-office-dev-secret-change-in-prod}
+      - CLAW_OFFICE_SECRET=${CLAW_OFFICE_SECRET:-z5wKkskblzdjdQSR-ThM0nOa-IYCvXoqo4PwsxereU}
       - ASSET_DRAWER_PASS=${ASSET_DRAWER_PASS:-1234}
     restart: unless-stopped
     networks:

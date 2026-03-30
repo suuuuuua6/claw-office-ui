@@ -426,6 +426,10 @@ fn find_project_root() -> PathBuf {
     if let Ok(home) = std::env::var("HOME") {
         let home = PathBuf::from(home);
         let candidates = [
+            home.join("Documents").join("GitHub").join("Claw-Office-UI"),
+            home.join("GitHub").join("Claw-Office-UI"),
+            home.join("Documents").join("Claw-Office-UI"),
+            home.join("Claw-Office-UI"),
             home.join("Documents").join("GitHub").join("Star-Office-UI"),
             home.join("GitHub").join("Star-Office-UI"),
             home.join("Documents").join("Star-Office-UI"),
