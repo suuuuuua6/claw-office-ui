@@ -322,8 +322,8 @@ def invite_page():
 
 DEFAULT_AGENTS = [
     {
-        "agentId": "star",
-        "name": "Star",
+        "agentId": "main",
+        "name": "主助手",
         "isMain": True,
         "state": "idle",
         "detail": "待命中，随时准备为你服务",
@@ -898,6 +898,11 @@ def get_agents():
     except Exception:
         pass
 
+    # Build a map of agentId -> config (including isMain)
+    config_map = {}
+    for ac in config.get("agents", []):
+        config_map[ac.get("agentId")] = ac
+
     for a in agents:
         # Auto-offline detection: if no heartbeat for offline_timeout seconds
         last_heartbeat = a.get("lastHeartbeatAt") or a.get("lastPushAt") or a.get("updated_at")
@@ -911,6 +916,10 @@ def get_agents():
                     a["authStatus"] = "approved"
             except Exception:
                 pass
+        # Merge isMain from config
+        agent_cfg = config_map.get(a.get("agentId"))
+        if agent_cfg:
+            a["isMain"] = agent_cfg.get("isMain", False)
 
     save_agents_state(agents)
 
@@ -1389,6 +1398,7 @@ def agent_heartbeat():
     detail = data.get("detail", "")
     progress = data.get("progress", 0)
     room_id = data.get("roomId") or agent_config.get("roomId") or agent_id  # Default to agent's own room
+    is_main = agent_config.get("isMain", False)
 
     # Update agent state
     agents = load_agents_state()
@@ -1416,10 +1426,20 @@ def agent_heartbeat():
             "avatar": agent_config.get("avatar", "star"),
             "updated_at": now.isoformat(),
             "lastHeartbeatAt": now.isoformat(),
-            "authStatus": "approved"
+            "authStatus": "approved",
+            "isMain": is_main
         })
 
     save_agents_state(agents)
+
+    # If this is the main agent, also update the legacy state.json for the star sprite
+    if is_main:
+        main_state = load_state()
+        main_state["state"] = state
+        main_state["detail"] = detail
+        main_state["progress"] = progress
+        main_state["updated_at"] = now.isoformat()
+        save_state(main_state)
 
     return jsonify({
         "ok": True,

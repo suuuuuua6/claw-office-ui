@@ -187,13 +187,9 @@ const BUBBLE_TEXTS = {
   ]
 };
 
-let game, star, sofa, serverroom, areas = {}, currentState = 'idle', pendingDesiredState = null, statusText, lastFetch = 0, lastBlink = 0, lastBubble = 0, targetX = 660, targetY = 170, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0, syncAnimSprite = null, catBubble = null;
-let isMoving = false;
-let waypoints = [];
-let lastWanderAt = 0;
+let game, sofa, serverroom, areas = {}, statusText, lastBlink = 0, lastBubble = 0, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0, syncAnimSprite = null, catBubble = null;
 let coordsOverlay, coordsDisplay, coordsToggle;
 let showCoords = false;
-const FETCH_INTERVAL = 2000;
 const BLINK_INTERVAL = 2500;
 const BUBBLE_INTERVAL = 8000;
 const CAT_BUBBLE_INTERVAL = 18000;
@@ -202,16 +198,6 @@ const TYPEWRITER_DELAY = 50;
 let agents = {}; // agentId -> sprite/container
 let lastAgentsFetch = 0;
 const AGENTS_FETCH_INTERVAL = 2500;
-
-// 房间切换相关
-let currentRoomId = null;
-
-// 切换房间
-function switchRoom(roomId) {
-  currentRoomId = roomId;
-  fetchAgents(); // 立即刷新 agents
-}
-window.switchRoom = switchRoom; // 暴露给外部调用
 
 // agent 颜色配置
 const AGENT_COLORS = {
@@ -366,14 +352,6 @@ function create() {
     repeat: -1
   });
 
-  star = game.physics.add.sprite(areas.breakroom.x, areas.breakroom.y, 'star_idle');
-  star.setOrigin(0.5);
-  star.setScale(1.4);
-  star.setAlpha(0.95);
-  star.setDepth(20);
-  star.setVisible(false);
-  star.anims.stop();
-
   if (game.textures.exists('sofa_busy')) {
     sofa.setTexture('sofa_busy');
     sofa.anims.play('sofa_busy', true);
@@ -496,7 +474,7 @@ function create() {
     window.flowerSprite.setFrame(next);
   });
 
-  // === Star 在桌前工作（来自 LAYOUT）===
+  // === Star 工作动画（供 agent 使用）===
   this.anims.create({
     key: 'star_working',
     frames: this.anims.generateFrameNumbers('star_working', { start: 0, end: 191 }),
@@ -524,17 +502,6 @@ function create() {
   window.errorBug = errorBug;
   window.errorBugDir = 1;
 
-  const starWorking = this.add.sprite(
-    LAYOUT.furniture.starWorking.x,
-    LAYOUT.furniture.starWorking.y,
-    'star_working',
-    0
-  ).setOrigin(LAYOUT.furniture.starWorking.origin.x, LAYOUT.furniture.starWorking.origin.y);
-  starWorking.setVisible(false);
-  starWorking.setScale(LAYOUT.furniture.starWorking.scale);
-  starWorking.setDepth(LAYOUT.furniture.starWorking.depth);
-  window.starWorking = starWorking;
-
   // === 同步动画（来自 LAYOUT）===
   this.anims.create({
     key: 'sync_anim',
@@ -551,8 +518,6 @@ function create() {
   syncAnimSprite.setDepth(LAYOUT.furniture.syncAnim.depth);
   syncAnimSprite.anims.stop();
   syncAnimSprite.setFrame(0);
-
-  window.starSprite = star;
 
   statusText = document.getElementById('status-text');
   coordsOverlay = document.getElementById('coords-overlay');
@@ -576,7 +541,6 @@ function create() {
   });
 
   loadMemo();
-  fetchStatus();
   fetchAgents();
 
   // 可选调试：仅在显式开启 debug 模式时渲染测试用尼卡 agent
@@ -629,13 +593,15 @@ function create() {
   }
 }
 
+// 主 agent 状态缓存（用于场景元素控制）
+let mainAgentState = 'idle';
+
 function update(time) {
-  if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
   if (time - lastAgentsFetch > AGENTS_FETCH_INTERVAL) { fetchAgents(); lastAgentsFetch = time; }
 
-  const effectiveStateForServer = pendingDesiredState || currentState;
+  // 场景元素根据主 agent 状态控制
   if (serverroom) {
-    if (effectiveStateForServer === 'idle') {
+    if (mainAgentState === 'idle') {
       if (serverroom.anims.isPlaying) {
         serverroom.anims.stop();
         serverroom.setFrame(0);
@@ -648,7 +614,7 @@ function update(time) {
   }
 
   if (window.errorBug) {
-    if (effectiveStateForServer === 'error') {
+    if (mainAgentState === 'error') {
       window.errorBug.setVisible(true);
       if (!window.errorBug.anims.isPlaying || window.errorBug.anims.currentAnim?.key !== 'error_bug') {
         window.errorBug.anims.play('error_bug', true);
@@ -673,7 +639,7 @@ function update(time) {
   }
 
   if (syncAnimSprite) {
-    if (effectiveStateForServer === 'syncing') {
+    if (mainAgentState === 'syncing') {
       if (!syncAnimSprite.anims.isPlaying || syncAnimSprite.anims.currentAnim?.key !== 'sync_anim') {
         syncAnimSprite.anims.play('sync_anim', true);
       }
@@ -698,203 +664,27 @@ function update(time) {
     typewriterIndex++;
     lastTypewriter = time;
   }
-
-  moveStar(time);
-}
-
-function normalizeState(s) {
-  if (!s) return 'idle';
-  if (s === 'working') return 'writing';
-  if (s === 'run' || s === 'running') return 'executing';
-  if (s === 'sync') return 'syncing';
-  if (s === 'research') return 'researching';
-  return s;
-}
-
-function fetchStatus() {
-  fetch('/status')
-    .then(response => response.json())
-    .then(data => {
-      const nextState = normalizeState(data.state);
-      const stateInfo = STATES[nextState] || STATES.idle;
-      const changed = (pendingDesiredState === null) && (nextState !== currentState);
-      const nextLine = '[' + stateInfo.name + '] ' + (data.detail || '...');
-      if (changed) {
-        typewriterTarget = nextLine;
-        typewriterText = '';
-        typewriterIndex = 0;
-
-        pendingDesiredState = null;
-        currentState = nextState;
-
-        if (nextState === 'idle') {
-          if (game.textures.exists('sofa_busy')) {
-            sofa.setTexture('sofa_busy');
-            sofa.anims.play('sofa_busy', true);
-          }
-          star.setVisible(false);
-          star.anims.stop();
-          if (window.starWorking) {
-            window.starWorking.setVisible(false);
-            window.starWorking.anims.stop();
-          }
-        } else if (nextState === 'error') {
-          sofa.anims.stop();
-          sofa.setTexture('sofa_idle');
-          star.setVisible(false);
-          star.anims.stop();
-          if (window.starWorking) {
-            window.starWorking.setVisible(false);
-            window.starWorking.anims.stop();
-          }
-        } else if (nextState === 'syncing') {
-          sofa.anims.stop();
-          sofa.setTexture('sofa_idle');
-          star.setVisible(false);
-          star.anims.stop();
-          if (window.starWorking) {
-            window.starWorking.setVisible(false);
-            window.starWorking.anims.stop();
-          }
-        } else {
-          sofa.anims.stop();
-          sofa.setTexture('sofa_idle');
-          star.setVisible(false);
-          star.anims.stop();
-          if (window.starWorking) {
-            window.starWorking.setVisible(true);
-            window.starWorking.anims.play('star_working', true);
-          }
-        }
-
-        if (serverroom) {
-          if (nextState === 'idle') {
-            serverroom.anims.stop();
-            serverroom.setFrame(0);
-          } else {
-            serverroom.anims.play('serverroom_on', true);
-          }
-        }
-
-        if (syncAnimSprite) {
-          if (nextState === 'syncing') {
-            if (!syncAnimSprite.anims.isPlaying || syncAnimSprite.anims.currentAnim?.key !== 'sync_anim') {
-              syncAnimSprite.anims.play('sync_anim', true);
-            }
-          } else {
-            if (syncAnimSprite.anims.isPlaying) syncAnimSprite.anims.stop();
-            syncAnimSprite.setFrame(0);
-          }
-        }
-      } else {
-        if (!typewriterTarget || typewriterTarget !== nextLine) {
-          typewriterTarget = nextLine;
-          typewriterText = '';
-          typewriterIndex = 0;
-        }
-      }
-    })
-    .catch(error => {
-      typewriterTarget = '连接失败，正在重试...';
-      typewriterText = '';
-      typewriterIndex = 0;
-    });
-}
-
-function moveStar(time) {
-  const effectiveState = pendingDesiredState || currentState;
-  const stateInfo = STATES[effectiveState] || STATES.idle;
-  const baseTarget = areas[stateInfo.area] || areas.breakroom;
-
-  const dx = targetX - star.x;
-  const dy = targetY - star.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const speed = 1.4;
-  const wobble = Math.sin(time / 200) * 0.8;
-
-  if (dist > 3) {
-    star.x += (dx / dist) * speed;
-    star.y += (dy / dist) * speed;
-    star.setY(star.y + wobble);
-    isMoving = true;
-  } else {
-    if (waypoints && waypoints.length > 0) {
-      waypoints.shift();
-      if (waypoints.length > 0) {
-        targetX = waypoints[0].x;
-        targetY = waypoints[0].y;
-        isMoving = true;
-      } else {
-        if (pendingDesiredState !== null) {
-          isMoving = false;
-          currentState = pendingDesiredState;
-          pendingDesiredState = null;
-
-          if (currentState === 'idle') {
-            star.setVisible(false);
-            star.anims.stop();
-            if (window.starWorking) {
-              window.starWorking.setVisible(false);
-              window.starWorking.anims.stop();
-            }
-          } else {
-            star.setVisible(false);
-            star.anims.stop();
-            if (window.starWorking) {
-              window.starWorking.setVisible(true);
-              window.starWorking.anims.play('star_working', true);
-            }
-          }
-        }
-      }
-    } else {
-      if (pendingDesiredState !== null) {
-        isMoving = false;
-        currentState = pendingDesiredState;
-        pendingDesiredState = null;
-
-        if (currentState === 'idle') {
-          star.setVisible(false);
-          star.anims.stop();
-          if (window.starWorking) {
-            window.starWorking.setVisible(false);
-            window.starWorking.anims.stop();
-          }
-          if (game.textures.exists('sofa_busy')) {
-            sofa.setTexture('sofa_busy');
-            sofa.anims.play('sofa_busy', true);
-          }
-        } else {
-          star.setVisible(false);
-          star.anims.stop();
-          if (window.starWorking) {
-            window.starWorking.setVisible(true);
-            window.starWorking.anims.play('star_working', true);
-          }
-          sofa.anims.stop();
-          sofa.setTexture('sofa_idle');
-        }
-      }
-    }
-  }
 }
 
 function showBubble() {
   if (bubble) { bubble.destroy(); bubble = null; }
-  const texts = BUBBLE_TEXTS[currentState] || BUBBLE_TEXTS.idle;
-  if (currentState === 'idle') return;
+  const texts = BUBBLE_TEXTS[mainAgentState] || BUBBLE_TEXTS.idle;
+  if (mainAgentState === 'idle') return;
 
-  let anchorX = star.x;
-  let anchorY = star.y;
-  if (currentState === 'syncing' && syncAnimSprite && syncAnimSprite.visible) {
+  // 找到主 agent 的位置作为气泡锚点
+  let anchorX = 640, anchorY = 360;
+  const mainAgentId = Object.keys(agents).find(id => agents[id]?.getAt?.(0)?.name === 'starSprite');
+  if (mainAgentId && agents[mainAgentId]) {
+    anchorX = agents[mainAgentId].x;
+    anchorY = agents[mainAgentId].y;
+  }
+
+  if (mainAgentState === 'syncing' && syncAnimSprite && syncAnimSprite.visible) {
     anchorX = syncAnimSprite.x;
     anchorY = syncAnimSprite.y;
-  } else if (currentState === 'error' && window.errorBug && window.errorBug.visible) {
+  } else if (mainAgentState === 'error' && window.errorBug && window.errorBug.visible) {
     anchorX = window.errorBug.x;
     anchorY = window.errorBug.y;
-  } else if (!star.visible && window.starWorking && window.starWorking.visible) {
-    anchorX = window.starWorking.x;
-    anchorY = window.starWorking.y;
   }
 
   const text = texts[Math.floor(Math.random() * texts.length)];
@@ -923,16 +713,40 @@ function showCatBubble() {
 }
 
 function fetchAgents() {
-  let url = '/agents?t=' + Date.now();
-  if (currentRoomId) {
-    url += '&roomId=' + encodeURIComponent(currentRoomId);
-  }
-  fetch(url, { cache: 'no-store' })
+  fetch('/agents?t=' + Date.now(), { cache: 'no-store' })
     .then(response => response.json())
     .then(data => {
       if (!Array.isArray(data)) return;
-      // 重置位置计数器
-      // 按区域分配不同位置索引，避免重叠
+
+      // 找到主 agent 来控制场景元素
+      const mainAgent = data.find(a => a.isMain);
+      if (mainAgent) {
+        mainAgentState = mainAgent.state || 'idle';
+        const stateInfo = STATES[mainAgentState] || STATES.idle;
+
+        // 更新打字机文字
+        const nextLine = '[' + stateInfo.name + '] ' + (mainAgent.detail || '...');
+        if (!typewriterTarget || typewriterTarget !== nextLine) {
+          typewriterTarget = nextLine;
+          typewriterText = '';
+          typewriterIndex = 0;
+        }
+
+        // 更新沙发状态
+        if (sofa) {
+          if (mainAgentState === 'idle') {
+            if (game.textures.exists('sofa_busy')) {
+              sofa.setTexture('sofa_busy');
+              sofa.anims.play('sofa_busy', true);
+            }
+          } else {
+            sofa.anims.stop();
+            sofa.setTexture('sofa_idle');
+          }
+        }
+      }
+
+      // 重置位置计数器，按区域分配不同位置索引
       const areaSlots = { breakroom: 0, writing: 0, error: 0 };
       for (let agent of data) {
         const area = agent.area || 'breakroom';
@@ -965,61 +779,70 @@ function getAreaPosition(area, slotIndex) {
 function renderAgent(agent) {
   const agentId = agent.agentId;
   const name = agent.name || 'Agent';
+  const state = agent.state || 'idle';
   const area = agent.area || 'breakroom';
   const authStatus = agent.authStatus || 'approved';
 
-  // 获取这个 agent 在区域里的位置
+  // 所有 agent 使用统一的区域位置分配
   const pos = getAreaPosition(area, agent._slotIndex || 0);
   const baseX = pos.x;
   const baseY = pos.y;
-
-  // 颜色
-  const nameColor = NAME_TAG_COLORS[authStatus] || NAME_TAG_COLORS.default;
 
   // 透明度（离线时变半透明）
   let alpha = 1;
   if (authStatus === 'offline') alpha = 0.5;
 
-  if (!agents[agentId]) {
-    // 新建 agent - 所有 agent 使用统一的渲染方式
-    const container = game.add.container(baseX, baseY);
-    container.setDepth(1200); // 统一深度，不再区分 isMain
+  // 根据状态决定动画
+  const animKey = state === 'idle' ? 'star_idle' : (state === 'researching' ? 'star_researching' : 'star_idle');
 
-    // 像素小人图标
-    const starIcon = game.add.text(0, 0, '⭐', {
-      fontFamily: 'ArkPixel, monospace',
-      fontSize: '32px'
-    }).setOrigin(0.5);
-    starIcon.name = 'starIcon';
+  if (!agents[agentId]) {
+    // 新建 agent - 使用 star 精灵表
+    const container = game.add.container(baseX, baseY);
+    container.setDepth(1200);
+
+    // star 精灵（使用精灵表动画）
+    const starSprite = game.add.sprite(0, 0, 'star_idle');
+    starSprite.setOrigin(0.5);
+    starSprite.setScale(1.2);
+    starSprite.name = 'starSprite';
+    starSprite.anims.play(animKey, true);
 
     // 名牌背景（半透明黑色）
-    const nameTagBg = game.add.rectangle(0, -36, name.length * 12 + 16, 20, 0x000000, 0.6);
+    const nameTagBg = game.add.rectangle(0, -50, name.length * 10 + 12, 18, 0x000000, 0.6);
     nameTagBg.name = 'nameTagBg';
 
     // 名字标签
-    const nameTag = game.add.text(0, -36, name, {
+    const nameTag = game.add.text(0, -50, name, {
       fontFamily: 'ArkPixel, monospace',
-      fontSize: '14px',
+      fontSize: '12px',
       fill: '#ffffff',
       stroke: '#000',
       strokeThickness: 2
     }).setOrigin(0.5);
     nameTag.name = 'nameTag';
 
-    // 状态小点（绿色=在线， 灰色=离线）
-    let dotColor = 0x22c55e; // approved = green
+    // 状态小点（绿色=在线，灰色=离线）
+    let dotColor = 0x22c55e;
     if (authStatus === 'offline') dotColor = 0x94a3b8;
-    const statusDot = game.add.circle(20, -20, 5, dotColor, alpha);
-    statusDot.setStrokeStyle(2, 0x000000, alpha);
+    const statusDot = game.add.circle(24, -30, 4, dotColor, alpha);
+    statusDot.setStrokeStyle(1, 0x000000, alpha);
     statusDot.name = 'statusDot';
 
-    container.add([starIcon, nameTagBg, nameTag, statusDot]);
+    container.add([starSprite, nameTagBg, nameTag, statusDot]);
     agents[agentId] = container;
   } else {
-    // 更新 agent
+    // 更新现有 agent
     const container = agents[agentId];
     container.setPosition(baseX, baseY);
     container.setAlpha(alpha);
+
+    // 更新 star 精灵动画
+    const starSprite = container.getAt(0);
+    if (starSprite && starSprite.name === 'starSprite') {
+      if (starSprite.anims.currentAnim?.key !== animKey) {
+        starSprite.anims.play(animKey, true);
+      }
+    }
 
     // 更新名字
     const nameTag = container.getAt(2);
@@ -1027,9 +850,8 @@ function renderAgent(agent) {
     if (nameTag && nameTag.name === 'nameTag') {
       nameTag.setText(name);
     }
-    // 更新名牌背景宽度
     if (nameTagBg && nameTagBg.name === 'nameTagBg') {
-      nameTagBg.setSize(name.length * 12 + 16, 20);
+      nameTagBg.setSize(name.length * 10 + 12, 18);
     }
     // 更新状态点颜色
     const statusDot = container.getAt(3);
