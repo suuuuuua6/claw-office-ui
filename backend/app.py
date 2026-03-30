@@ -385,11 +385,15 @@ def load_agents_config():
 
 
 def find_agent_config(agent_id: str) -> Optional[dict]:
-    """Find agent config by agentId."""
+    """Find agent config by agentId, merged with defaults."""
     config = load_agents_config()
+    defaults = config.get("defaults", {})
     for agent in config.get("agents", []):
         if agent.get("agentId") == agent_id:
-            return agent
+            # Merge: defaults as base, agent-specific overrides
+            merged = dict(defaults)
+            merged.update(agent)
+            return merged
     return None
 
 
